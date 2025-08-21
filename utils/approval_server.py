@@ -20,4 +20,5 @@ def start_server():
     dp.add_handler(CommandHandler("ejecutar_swap", ejecutar))
     updater.start_polling()
 
+# Ejecutar en hilo separado
 threading.Thread(target=start_server, daemon=True).start()

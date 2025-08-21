@@ -7,6 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Conectar a Ronin
 w3 = Web3(Web3.HTTPProvider(
     RONIN_RPC_URL,
     request_kwargs={"timeout": 15}
@@ -15,7 +16,7 @@ w3 = Web3(Web3.HTTPProvider(
 if not w3.is_connected():
     raise Exception("❌ No se pudo conectar al nodo de Ronin")
 
-logger.info("✅ Conectado a Ronin via " + RONIN_RPC_URL)
+logger.info("✅ Conectado a Ronin via ronin.drpc.org")
 
 def get_balance(token_symbol, wallet_address):
     try:
@@ -41,7 +42,7 @@ def get_balance(token_symbol, wallet_address):
         return balance / (10 ** decimals)
 
     except Exception as e:
-        logger.error(f"❌ Error en {token_symbol}: {e}")
+        logger.error(f"❌ Error al obtener balance de {token_symbol}: {e}")
         return 0
 
 def get_all_balances(wallet_address):
