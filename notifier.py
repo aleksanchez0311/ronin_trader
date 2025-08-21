@@ -1,6 +1,6 @@
 # notifier.py
 import smtplib
-from email.mime.text import MIMEText
+#from email.mime.text import MIMEText
 from decouple import config
 import requests
 
@@ -13,24 +13,24 @@ def send_telegram(text):
     requests.post(url, json=payload)
 
 # Correo (Gmail)
-def send_email(subject, body):
-    user = config("EMAIL_USER")
-    password = config("EMAIL_PASS")
-    to = config("EMAIL_TO")
+#def send_email(subject, body):
+    #user = config("EMAIL_USER")
+    #password = config("EMAIL_PASS")
+    #to = config("EMAIL_TO")
 
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = user
-    msg['To'] = to
+    #msg = MIMEText(body)
+    #msg['Subject'] = subject
+    #msg['From'] = user
+    #msg['To'] = to
 
-    try:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(user, password)
-            server.sendmail(user, to, msg.as_string())
-    except Exception as e:
-        print(f"Error al enviar correo: {e}")
+    #try:
+    #    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+    #        server.login(user, password)
+  #          server.sendmail(user, to, msg.as_string())
+    #except Exception as e:
+    #    print(f"Error al enviar correo: {e}")
 
 # Envía alerta combinada
-def alert(message):
-    send_telegram(message)
-    send_email("Alerta de Trading", message)
+#def alert(message):
+    #send_telegram(message)
+    #send_email("Alerta de Trading", message)
