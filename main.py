@@ -2,7 +2,7 @@
 from web3 import Web3
 from decouple import config
 import time
-from socket_api import get_swap_route
+from swap_api import get_swap_route
 from wallet import get_all_balances
 from notifier import alert
 from config import TOKENS
@@ -29,17 +29,19 @@ def execute_swap(route):
         alert(f"❌ Error al ejecutar swap: {e}")
         return None
 
-# === FLUJO PRINCIPAL ===
 if __name__ == "__main__":
     print("🚀 Bot de trading en Ronin iniciado...")
     alert("Bot iniciado. Esperando señal...")
 
     while True:
         try:
-            # Ejemplo: Quieres intercambiar 10 USDT → WETH
-            from_token = TOKENS["USDT"]
-            to_token = TOKENS["WETH"]
-            amount = int(10 * 10**18)  # 10 USDT
+            balances = get_all_balances(wallet_address)
+            alert(f"📊 Balances actuales: {balances}")
+
+            # Ejemplo: Swap de 1 RON → USDT
+            from_token = "0x5555555555555555555555555555555555555555"  # RON
+            to_token = TOKENS["USDT"]
+            amount = int(1 * 10**18)  # 1 RON
 
             route = get_swap_route(from_token, to_token, amount, wallet_address)
             if not route:
@@ -49,15 +51,14 @@ if __name__ == "__main__":
             to_amount = int(route['toAmount']) / 10**18
             msg = f"""
 🔔 *ALERTA DE SWAP*
-De: 10 USDT
-A: {to_amount:.6f} WETH
+De: 1 RON
+A: {to_amount:.6f} USDT
 ¿Autorizas el swap? Responde en Telegram con:
 ✅ /ejecutar_swap
 """
             alert(msg)
 
-            # Aquí iría un sistema de espera de autorización
-            # Por simplicidad, simulamos espera de 30 seg
+            # Simulación de espera (30 seg)
             time.sleep(30)
 
             # Verificar si aún es rentable
@@ -67,7 +68,7 @@ A: {to_amount:.6f} WETH
                 if hash:
                     alert(f"✅ Swap ejecutado! Hash: {hash}")
             else:
-                alert("📉 Swap no rentable ahora. Cancelado.")
+                alert("📉 Swap no rentable. Cancelado.")
 
             time.sleep(300)  # Esperar 5 minutos
 
