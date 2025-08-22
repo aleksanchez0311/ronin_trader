@@ -18,11 +18,12 @@ W3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
 # --- Claves ---
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
-WALLET_ADDRESS_RAW = os.getenv("WALLET_ADDRESS")
-if not WALLET_ADDRESS_RAW:
-    raise ValueError("WALLET_ADDRESS no encontrada")
+if not PRIVATE_KEY:
+    raise ValueError("PRIVATE_KEY no encontrada. Revise el archivo .env")
 
-WALLET_ADDRESS = W3.to_checksum_address(WALLET_ADDRESS_RAW)
+WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
+if not WALLET_ADDRESS:
+    raise ValueError("WALLET_ADDRESS no encontrada. Revise el archivo .env")
 
 # --- Direcciones ---
 FACTORY_ADDRESS = "0xb255d6a720bb7c39fee173ce22113397119cb930"

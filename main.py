@@ -16,18 +16,19 @@ logging.basicConfig(
 )
 
 # --- Importar desde config.py ---
-from config import W3, PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, TOKENS
-from contracts import ROUTER_ABI, ERC20_ABI
-from utils import to_checksum, get_tokens_from_pool, get_token_balance, get_token_decimals, get_token_symbol
+from config import W3
+from utils import CHECKSUMED_PRIVATE_KEY, CHECKSUMED_WALLET_ADDRESS, CHECKSUMED_ROUTER_ADDRESS, CHECKSUMED_TOKENS
+from contracts import ROUTER_ABI
+from utils import get_tokens_from_pool, get_token_balance, get_token_symbol
 
 # --- Validar billetera ---
-if not W3.is_address(WALLET_ADDRESS):
-    logging.error(f"❌ Dirección de billetera inválida: {WALLET_ADDRESS}")
+if not W3.is_address(CHECKSUMED_WALLET_ADDRESS):
+    logging.error(f"❌ Dirección de billetera inválida: {CHECKSUMED_WALLET_ADDRESS}")
     exit(1)
 
 # --- Inicializar contrato del router ---
 try:
-    router_contract = W3.eth.contract(address=to_checksum(ROUTER_ADDRESS), abi=ROUTER_ABI)
+    router_contract = W3.eth.contract(address=CHECKSUMED_ROUTER_ADDRESS, abi=ROUTER_ABI)
     logging.info("✅ Contrato del router de Katana cargado.")
 except Exception as e:
     logging.error(f"❌ Error al cargar contrato: {e}")
@@ -35,25 +36,25 @@ except Exception as e:
 
 def show_token_balance(token_address, wallet_address):
     """Muestra el balance actual de un token en una billetera"""
+    logging.info(f"🌐 Obteniendo datos del token {token_address}...")
     bal = get_token_balance(token_address, wallet_address)
     sym = get_token_symbol(token_address)
-    dec = get_token_decimals(token_address)
     return logging.info(
-        f"💰 Balance of : {sym}"
-        f"{bal / 10**{dec}:.{dec}f} {sym}"       
+        f"💰 Balance of : {sym} "
+        f"{bal}"       
     )
 def show_ron_balance(wallet_address):
     """Muestra el balance actual de un RON en una billetera"""
     bal = W3.eth.get_balance(wallet_address)
     return logging.info(
-        f"💰 Balance of : RON"
-        f"{W3.from_wei(bal, 'ether'):.18f} RON"
+        f"💰 Balance of : RON "
+        f"{W3.from_wei(bal, 'ether'):.18f}"
     )
 
 # --- Ejecutar Trade ---
 def execute_trade(token_in, token_out, amount_in_wei):
     """Ejecuta un swap en Katana"""
-    if not PRIVATE_KEY:
+    if not CHECKSUMED_PRIVATE_KEY:
         in_sym = get_token_symbol(token_in)
         out_sym = get_token_symbol(token_out)
         logging.warning(f"🟢 [SIMULADO] Swap: {amount_in_wei} {in_sym} → {out_sym}")
@@ -69,16 +70,16 @@ def execute_trade(token_in, token_out, amount_in_wei):
             amount_in_wei,
             amount_out_min,
             [token_in, token_out],
-            WALLET_ADDRESS,
+            CHECKSUMED_WALLET_ADDRESS,
             int(time.time()) + 1000
         ).build_transaction({
-            'from': WALLET_ADDRESS,
-            'nonce': W3.eth.get_transaction_count(WALLET_ADDRESS),
+            'from': CHECKSUMED_WALLET_ADDRESS,
+            'nonce': W3.eth.get_transaction_count(CHECKSUMED_WALLET_ADDRESS),
             'gas': 250000,
             'gasPrice': W3.to_wei('20', 'gwei'),
         })
 
-        signed_tx = W3.eth.account.sign_transaction(tx, PRIVATE_KEY)
+        signed_tx = W3.eth.account.sign_transaction(tx, CHECKSUMED_PRIVATE_KEY)
         tx_hash = W3.eth.send_raw_transaction(signed_tx.rawTransaction)
         logging.info(f"✅ Trade enviado! Tx: {tx_hash.hex()}")
         return tx_hash.hex()
@@ -100,7 +101,7 @@ def poll_katana_swaps():
         logs = W3.eth.get_logs({
             "fromBlock": from_block,
             "toBlock": latest_block,
-            "address": to_checksum(ROUTER_ADDRESS),
+            "address": CHECKSUMED_ROUTER_ADDRESS,
             "topics": [SWAP_TOPIC]
         })
 
@@ -165,10 +166,10 @@ def poll_katana_swaps():
 
 # --- Loop Principal ---
 def main():
-    logging.info(f"🚀 Bot de trading en Ronin iniciado | Wallet: {WALLET_ADDRESS[:10]}...")
-    for token in TOKENS:
-        show_token_balance(token, WALLET_ADDRESS)
-    show_ron_balance(WALLET_ADDRESS)
+    logging.info(f"🚀 Bot de trading en Ronin iniciado | Wallet: {CHECKSUMED_WALLET_ADDRESS[:10]}...")
+    show_ron_balance(CHECKSUMED_WALLET_ADDRESS)
+    for token in CHECKSUMED_TOKENS:
+        show_token_balance(token, CHECKSUMED_WALLET_ADDRESS)
 
     while True:
         try:
