@@ -174,7 +174,7 @@ def main():
     tokens_info = ""
     for token in CHECKSUMED_TOKENS:
         tokens_info += show_token_balance(token, CHECKSUMED_WALLET_ADDRESS) + '\n'
-    logging.info(tokens_info)
+    logging.info("👌 {tokens_info}")
 
     while True:
         try:
