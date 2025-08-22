@@ -30,7 +30,7 @@ class RetryHTTPProvider(HTTPProvider):
         super().__init__(endpoint_uri, session=self.session)
 
 # --- Conexión a Ronin ---
-RONIN_NODE_URL = os.getenv("RONIN_NODE_URL", "https://api.roninchain.com/rpc")
+RONIN_NODE_URL="https://api.roninchain.com/rpc"
 W3 = Web3(RetryHTTPProvider(RONIN_NODE_URL, session=session))
 
 if not W3.is_connected():
@@ -61,3 +61,5 @@ SLP = "0xa8754b9Fa15fc18BB59458815510E40a12cD2014"
 TOKENS = [USDC,WETH,WRON,AXS,SLP]
 
 
+
+SLIPPAGE=100
