@@ -1,22 +1,17 @@
-from config import W3
+# utils.py
+from web3 import Web3
 
-def get_token_price(token_in, token_out, amount_in):
-    """Obtiene el precio estimado de swap usando Katana Router (view function)"""
-    # Aquí deberías usar `getAmountsOut` del router
-    # Pero necesitas el contrato cargado
-    from web3.contract import Contract
-    router = W3.eth.contract(address="0x2cCb8C89aBBDF3a366a39797C809c7957896c841", abi=[
-        {
-            "inputs": [{"type": "uint256", "name": "amountIn"}, {"type": "address[]", "name": "path"}],
-            "name": "getAmountsOut",
-            "outputs": [{"type": "uint256[]", "name": "amounts"}],
-            "stateMutability": "view",
-            "type": "function"
-        }
-    ])
+def get_token_symbol(token_address, tokens_dict):
+    """Devuelve el símbolo del token si es conocido"""
+    for name, addr in tokens_dict.items():
+        if addr.lower() == token_address.lower():
+            return name
+    return token_address[:8]
+
+def get_pool_address(factory_contract, token_a, token_b):
+    """Obtiene la dirección del pool"""
     try:
-        amounts = router.functions.getAmountsOut(amount_in, [token_in, token_out]).call()
-        return amounts[1]
+        return factory_contract.functions.getPair(token_a, token_b).call()
     except Exception as e:
-        print("Error al obtener precio:", e)
-        return 0
+        print(f"Error al obtener pool: {e}")
+        return None
