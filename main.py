@@ -1,10 +1,9 @@
 # main.py
 import os
 import time
-import requests
 import logging
 from dotenv import load_dotenv
-
+from web3 import Web3
 
 # Cargar variables de entorno
 load_dotenv()
@@ -17,7 +16,7 @@ logging.basicConfig(
 )
 
 # --- Importar desde config.py ---
-from config import W3, PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, WETH, USDC, AXS, SLP, to_checksum
+from config import W3, PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, WETH, USDC, AXS, SLP, to_checksum, get_tokens_from_pool
 from contracts import ROUTER_ABI, ERC20_ABI
 
 # --- Validar billetera ---
@@ -43,6 +42,16 @@ def get_token_balance(token_address):
         logging.error(f"❌ Error al obtener balance de {token_address}: {e}")
         return 0
 
+def get_token_symbol(token_address):
+    """Obtiene el símbolo de un token (simplificado para tokens conocidos)"""
+    SYMBOLS = {
+        WETH.lower(): "WETH",
+        USDC.lower(): "USDC",
+        AXS.lower(): "AXS",
+        SLP.lower(): "SLP"
+    }
+    return SYMBOLS.get(token_address.lower(), token_address[:8])
+
 def show_balances():
     """Muestra los balances actuales"""
     weth_bal = get_token_balance(WETH)
@@ -60,21 +69,21 @@ def show_balances():
         f"{W3.from_wei(eth_bal, 'ether'):.4f} RON"
     )
 
-# --- Ejecutar Trade (simulado o real) ---
+# --- Ejecutar Trade ---
 def execute_trade(token_in, token_out, amount_in_wei):
     """Ejecuta un swap en Katana"""
     if not PRIVATE_KEY:
-        logging.warning(f"🟢 [SIMULADO] Swap: {amount_in_wei} {token_in} → {token_out}")
+        in_sym = get_token_symbol(token_in)
+        out_sym = get_token_symbol(token_out)
+        logging.warning(f"🟢 [SIMULADO] Swap: {amount_in_wei} {in_sym} → {out_sym}")
         return "simulated_tx_hash"
 
     try:
-        # Estimar salida mínima (slippage 1%)
         amounts_out = router_contract.functions.getAmountsOut(
             amount_in_wei, [token_in, token_out]
         ).call()
         amount_out_min = int(amounts_out[1] * 0.99)
 
-        # Construir transacción
         tx = router_contract.functions.swapExactTokensForTokens(
             amount_in_wei,
             amount_out_min,
@@ -88,7 +97,6 @@ def execute_trade(token_in, token_out, amount_in_wei):
             'gasPrice': W3.to_wei('20', 'gwei'),
         })
 
-        # Firmar y enviar
         signed_tx = W3.eth.account.sign_transaction(tx, PRIVATE_KEY)
         tx_hash = W3.eth.send_raw_transaction(signed_tx.rawTransaction)
         logging.info(f"✅ Trade enviado! Tx: {tx_hash.hex()}")
@@ -98,43 +106,81 @@ def execute_trade(token_in, token_out, amount_in_wei):
         logging.error(f"❌ Error al ejecutar trade: {e}")
         return None
 
-# --- Polling de eventos (Moralis) ---
-def poll_moralis_events():
-    """Consulta swaps recientes desde Moralis"""
-    url = "https://deep-index.moralis.io/api/v2/erc20/transfers"
-    params = {
-        'chain': 'ronin',
-        'address': ROUTER_ADDRESS,
-        'limit': 5
-    }
-    headers = {
-        'X-API-Key': os.getenv("MORALIS_API_KEY")
-    }
-
+# --- Monitorear eventos de Swap en Katana (versión avanzada) ---
+def poll_katana_swaps():
+    """Consulta eventos de Swap en Katana y detecta oportunidades en cualquier par"""
     try:
-        r = requests.get(url, params=params, headers=headers, timeout=10)
-        if r.status_code != 200:
-            logging.warning(f"⚠️ Moralis: {r.status_code} - {r.text}")
+        # Topic del evento Swap
+        SWAP_TOPIC = "0xdff52c99c1dbe141c749727819e755918be7b86541a05d408426704d16017d4c"
+
+        latest_block = W3.eth.block_number
+        from_block = max(latest_block - 100, 0)
+
+        logs = W3.eth.get_logs({
+            "fromBlock": from_block,
+            "toBlock": latest_block,
+            "address": to_checksum(ROUTER_ADDRESS),
+            "topics": [SWAP_TOPIC]
+        })
+
+        if not logs:
             return
 
-        data = r.json()
-        for tx in data.get('result', []):
-            # Detectar grandes transferencias de AXS
-            token_addr = tx.get('token_address', '').lower()
-            value = int(tx.get('value', '0'))
+        logging.info(f"🔍 {len(logs)} swaps detectados en los últimos 100 bloques")
 
-            if token_addr == AXS.lower() and value > 100 * 10**18:
-                logging.warning("🚨 Gran venta de AXS detectada!")
-                usdc_balance = get_token_balance(USDC)
-                if usdc_balance > 5 * 10**6:  # >5 USDC
-                    logging.info("Bot comprando AXS...")
-                    execute_trade(USDC, AXS, 5 * 10**6)
+        for log in logs:
+            try:
+                # Decodificar evento Swap
+                event = router_contract.events.Swap()
+                decoded = event.process_log(log)
+
+                # Obtener tokens del pool
+                pool_address = log["address"]
+                tokens = get_tokens_from_pool(pool_address)
+                
+                if not tokens:
+                    continue
+
+                token0, token1 = tokens
+                token0_sym = get_token_symbol(token0)
+                token1_sym = get_token_symbol(token1)
+
+                # Determinar qué token se vendió
+                if decoded.args.amount0In > 0:
+                    token_sold = token0
+                    token_bought = token1
+                    amount_sold = decoded.args.amount0In
+                    amount_bought = decoded.args.amount1Out
+                    sym_sold = token0_sym
+                    sym_bought = token1_sym
+                elif decoded.args.amount1In > 0:
+                    token_sold = token1
+                    token_bought = token0
+                    amount_sold = decoded.args.amount1In
+                    amount_bought = decoded.args.amount0Out
+                    sym_sold = token1_sym
+                    sym_bought = token0_sym
                 else:
-                    logging.info("ℹ️  Sin suficiente USDC para comprar.")
-                break  # Procesa solo uno por iteración
+                    continue
+
+                # Mostrar swap detectado
+                logging.info(f"🔁 Swap detectado: {amount_sold / 10**18:.4f} {sym_sold} → {amount_bought / 10**18:.4f} {sym_bought} | Pool: {sym_sold}-{sym_bought}")
+
+                # Estrategia: seguir grandes swaps
+                if amount_sold > 100 * 10**18 and sym_sold in ["AXS", "SLP"]:
+                    logging.warning(f"🚨 Gran venta de {sym_sold} detectada: {amount_sold / 10**18:.2f} {sym_sold}")
+                    # Aquí tu lógica de trading
+                    
+                elif amount_bought > 100 * 10**18 and sym_bought in ["AXS", "SLP"]:
+                    logging.warning(f"🟢 Gran compra de {sym_bought} detectada: {amount_bought / 10**18:.2f} {sym_bought}")
+                    # Aquí tu lógica de trading
+
+            except Exception as e:
+                logging.error(f"❌ Error al procesar evento: {e}")
+                continue
 
     except Exception as e:
-        logging.error(f"❌ Error al consultar Moralis: {e}")
+        logging.error(f"❌ Error al consultar eventos de Katana: {e}")
 
 # --- Loop Principal ---
 def main():
@@ -143,7 +189,7 @@ def main():
 
     while True:
         try:
-            poll_moralis_events()
+            poll_katana_swaps()
             time.sleep(30)  # Cada 30 segundos
         except KeyboardInterrupt:
             logging.info("🛑 Bot detenido por el usuario.")
