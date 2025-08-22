@@ -4,6 +4,7 @@ import time
 import logging
 from dotenv import load_dotenv
 from web3 import Web3
+import requests
 
 # Cargar variables de entorno
 load_dotenv()
@@ -39,10 +40,8 @@ def show_token_balance(token_address, wallet_address):
     logging.info(f"🌐 Obteniendo datos del token {token_address}...")
     bal = get_token_balance(token_address, wallet_address)
     sym = get_token_symbol(token_address)
-    return logging.info(
-        f"💰 Balance of : {sym} "
-        f"{bal}"       
-    )
+    return (f"💰 Balance of: {sym} - " f"{bal}")
+
 def show_ron_balance(wallet_address):
     """Muestra el balance actual de un RON en una billetera"""
     bal = W3.eth.get_balance(wallet_address)
@@ -161,15 +160,21 @@ def poll_katana_swaps():
                 logging.error(f"❌ Error al procesar evento: {e}")
                 continue
 
+    except requests.exceptions.SSLError as e:
+        logging.warning(f"⚠️ Error SSL al conectar con Ronin: {e}")
+    except requests.exceptions.ConnectionError as e:
+        logging.warning(f"⚠️ Error de conexión: {e}")
     except Exception as e:
-        logging.error(f"❌ Error al consultar eventos de Katana: {e}")
+        logging.error(f"❌ Error desconocido: {e}")
 
 # --- Loop Principal ---
 def main():
     logging.info(f"🚀 Bot de trading en Ronin iniciado | Wallet: {CHECKSUMED_WALLET_ADDRESS[:10]}...")
     show_ron_balance(CHECKSUMED_WALLET_ADDRESS)
+    tokens_info = ""
     for token in CHECKSUMED_TOKENS:
-        show_token_balance(token, CHECKSUMED_WALLET_ADDRESS)
+        tokens_info += show_token_balance(token, CHECKSUMED_WALLET_ADDRESS) + '\n'
+    logging.info(tokens_info)
 
     while True:
         try:

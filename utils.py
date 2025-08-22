@@ -2,7 +2,7 @@
 from web3 import Web3
 import logging
 from contracts import POOL_ABI, ERC20_ABI
-from config import PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, FACTORY_ADDRESS, USDC, WETH, WRON, AXS, SLP
+from config import PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, FACTORY_ADDRESS, TOKENS
 from config import W3
 
 
@@ -56,4 +56,13 @@ CHECKSUMED_PRIVATE_KEY = PRIVATE_KEY
 CHECKSUMED_WALLET_ADDRESS = to_checksum(WALLET_ADDRESS)
 CHECKSUMED_FACTORY_ADDRESS = to_checksum(FACTORY_ADDRESS)
 CHECKSUMED_ROUTER_ADDRESS = to_checksum(ROUTER_ADDRESS)
-CHECKSUMED_TOKENS = {to_checksum(USDC), to_checksum(WETH), to_checksum(WRON), to_checksum(AXS), to_checksum(SLP)}
+
+
+def checksum_tokens(tokens):
+    checksumed_tokens = []
+    for token in tokens:
+        checksumed_tokens.append(to_checksum(token))
+    return checksumed_tokens    
+    
+
+CHECKSUMED_TOKENS = checksum_tokens(TOKENS)
