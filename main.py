@@ -16,9 +16,9 @@ logging.basicConfig(
 )
 
 # --- Importar desde config.py ---
-from config import W3, PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, WETH, USDC, AXS, SLP, to_checksum 
+from config import W3, PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, TOKENS
 from contracts import ROUTER_ABI, ERC20_ABI
-from utils import get_tokens_from_pool
+from utils import to_checksum, get_tokens_from_pool, get_token_balance, get_token_decimals, get_token_symbol
 
 # --- Validar billetera ---
 if not W3.is_address(WALLET_ADDRESS):
@@ -33,41 +33,21 @@ except Exception as e:
     logging.error(f"❌ Error al cargar contrato: {e}")
     exit(1)
 
-# --- Utilidades ---
-def get_token_balance(token_address):
-    """Obtiene el balance de un token ERC20"""
-    try:
-        contract = W3.eth.contract(address=to_checksum(token_address), abi=ERC20_ABI)
-        return contract.functions.balanceOf(WALLET_ADDRESS).call()
-    except Exception as e:
-        logging.error(f"❌ Error al obtener balance de {token_address}: {e}")
-        return 0
-
-def get_token_symbol(token_address):
-    """Obtiene el símbolo de un token (simplificado para tokens conocidos)"""
-    SYMBOLS = {
-        WETH.lower(): "WETH",
-        USDC.lower(): "USDC",
-        AXS.lower(): "AXS",
-        SLP.lower(): "SLP"
-    }
-    return SYMBOLS.get(token_address.lower(), token_address[:8])
-
-def show_balances():
-    """Muestra los balances actuales"""
-    weth_bal = get_token_balance(WETH)
-    usdc_bal = get_token_balance(USDC)
-    axs_bal = get_token_balance(AXS)
-    slp_bal = get_token_balance(SLP)
-    eth_bal = W3.eth.get_balance(WALLET_ADDRESS)
-
-    logging.info(
-        f"💰 Balances: "
-        f"{weth_bal / 10**18:.4f} WETH | "
-        f"{usdc_bal / 10**6:.2f} USDC | "
-        f"{axs_bal / 10**18:.4f} AXS | "
-        f"{slp_bal / 10**18:.4f} SLP | "
-        f"{W3.from_wei(eth_bal, 'ether'):.4f} RON"
+def show_token_balance(token_address, wallet_address):
+    """Muestra el balance actual de un token en una billetera"""
+    bal = get_token_balance(token_address, wallet_address)
+    sym = get_token_symbol(token_address)
+    dec = get_token_decimals(token_address)
+    return logging.info(
+        f"💰 Balance of : {sym}"
+        f"{bal / 10**{dec}:.{dec}f} {sym}"       
+    )
+def show_ron_balance(wallet_address):
+    """Muestra el balance actual de un RON en una billetera"""
+    bal = W3.eth.get_balance(wallet_address)
+    return logging.info(
+        f"💰 Balance of : RON"
+        f"{W3.from_wei(bal, 'ether'):.18f} RON"
     )
 
 # --- Ejecutar Trade ---
@@ -186,7 +166,9 @@ def poll_katana_swaps():
 # --- Loop Principal ---
 def main():
     logging.info(f"🚀 Bot de trading en Ronin iniciado | Wallet: {WALLET_ADDRESS[:10]}...")
-    show_balances()
+    for token in TOKENS:
+        show_token_balance(token, WALLET_ADDRESS)
+    show_ron_balance(WALLET_ADDRESS)
 
     while True:
         try:
