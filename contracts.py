@@ -52,3 +52,20 @@ FACTORY_ABI = [
         "type": "function"
     }
 ]
+
+POOL_ABI = [
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "token0",
+        "outputs": [{"name": "", "type": "address"}],
+        "type": "function"
+    },
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "token1",
+        "outputs": [{"name": "", "type": "address"}],
+        "type": "function"
+    }
+]

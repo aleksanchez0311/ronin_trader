@@ -16,8 +16,9 @@ logging.basicConfig(
 )
 
 # --- Importar desde config.py ---
-from config import w3, PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, WETH, USDC, AXS, SLP, to_checksum, get_tokens_from_pool
+from config import W3, PRIVATE_KEY, WALLET_ADDRESS, ROUTER_ADDRESS, WETH, USDC, AXS, SLP, to_checksum 
 from contracts import ROUTER_ABI, ERC20_ABI
+from utils import get_tokens_from_pool
 
 # --- Validar billetera ---
 if not W3.is_address(WALLET_ADDRESS):

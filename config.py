@@ -9,12 +9,12 @@ load_dotenv()
 
 # --- Conexión a Ronin ---
 RONIN_NODE_URL = os.getenv("RONIN_NODE_URL", "https://api.roninchain.com/rpc")
-w3 = Web3(Web3.HTTPProvider(RONIN_NODE_URL))
+W3 = Web3(Web3.HTTPProvider(RONIN_NODE_URL))
 
-if not w3.is_connected():
+if not W3.is_connected():
     raise ConnectionError("❌ No se pudo conectar a Ronin")
 
-w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+W3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
 # --- Claves ---
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
@@ -22,7 +22,7 @@ WALLET_ADDRESS_RAW = os.getenv("WALLET_ADDRESS")
 if not WALLET_ADDRESS_RAW:
     raise ValueError("WALLET_ADDRESS no encontrada")
 
-WALLET_ADDRESS = w3.to_checksum_address(WALLET_ADDRESS_RAW.replace("ronin", "0x"))
+WALLET_ADDRESS = W3.to_checksum_address(WALLET_ADDRESS_RAW.replace("ronin", "0x"))
 
 # --- Direcciones ---
 FACTORY_ADDRESS = "0xb255d6a720bb7c39fee173ce22113397119cb930"
@@ -39,4 +39,4 @@ TOKENS = {"USDC": USDC, "AXS": AXS, "WETH": WETH, "SLP": SLP}
 
 # Función de checksum
 def to_checksum(addr):
-    return w3.to_checksum_address(addr.lower())
+    return W3.to_checksum_address(addr.lower())
